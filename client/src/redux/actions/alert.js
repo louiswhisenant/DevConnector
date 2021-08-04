@@ -16,3 +16,10 @@ export const setAlert =
 			timeout
 		);
 	};
+
+export const removeAlert = (id) => (dispatch) => {
+	dispatch({
+		type: REMOVE_ALERT,
+		payload: id,
+	});
+};

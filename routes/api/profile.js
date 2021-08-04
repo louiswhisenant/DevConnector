@@ -7,6 +7,7 @@ const config = require('config');
 
 const Profile = require('../../models/Profile');
 const User = require('../../models/User');
+const Post = require('../../models/Post');
 
 // @route   GET api/profile/me
 // @desc    get current user's profile
@@ -23,6 +24,8 @@ router.get('/me', auth, async (req, res) => {
 				.status(400)
 				.json({ msg: 'There is no profile for this user' });
 		}
+
+		res.json(profile);
 	} catch (err) {
 		console.error(err.message);
 		res.status(500).send('Server Error');
@@ -67,9 +70,9 @@ router.get('/user/:user_id', async (req, res) => {
 	}
 });
 
-// @route   POST api/profile
-// @desc    Create or update a user profile
-// @access  Private
+// @route    POST api/profile
+// @desc     Create or update user profile
+// @access   Private
 router.post(
 	'/',
 	[
@@ -85,66 +88,56 @@ router.post(
 			return res.status(400).json({ errors: errors.array() });
 		}
 
+		// destructure the request
 		const {
-			company,
 			website,
-			location,
-			bio,
-			status,
-			githubusername,
 			skills,
 			youtube,
-			facebook,
 			twitter,
 			instagram,
 			linkedin,
+			facebook,
+			// spread the rest of the fields we don't need to check
+			...rest
 		} = req.body;
 
-		// Build profile object
-		const profileFields = {};
-		profileFields.user = req.user.id;
-		if (company) profileFields.company = company;
-		if (website) profileFields.website = website;
-		if (location) profileFields.location = location;
-		if (bio) profileFields.bio = bio;
-		if (status) profileFields.status = status;
-		if (githubusername) profileFields.githubusername = githubusername;
-		if (skills) {
-			profileFields.skills = skills
-				.split(',')
-				.map((skill) => skill.trim());
-		}
+		// build a profile
+		const profileFields = {
+			user: req.user.id,
+			website: website,
+			skills: Array.isArray(skills)
+				? skills
+				: skills.split(',').map((skill) => ' ' + skill.trim()),
+			...rest,
+		};
 
-		// Build social object
-		profileFields.social = {};
-		if (youtube) profileFields.social.youtube = youtube;
-		if (facebook) profileFields.social.facebook = facebook;
-		if (twitter) profileFields.social.twitter = twitter;
-		if (instagram) profileFields.social.instagram = instagram;
-		if (linkedin) profileFields.social.linkedin = linkedin;
+		// Build socialFields object
+		const socialFields = {
+			youtube,
+			twitter,
+			instagram,
+			linkedin,
+			facebook,
+		};
+
+		// normalize social fields to ensure valid url
+		for (const [key, value] of Object.entries(socialFields)) {
+			if (value && value.length > 0) socialFields[key] = value;
+		}
+		// add to profileFields
+		profileFields.social = socialFields;
 
 		try {
-			let profile = await Profile.findOne({ user: req.user.id });
-
-			if (profile) {
-				// Update profile
-				profile = await Profile.findOneAndUpdate(
-					{ user: req.user.id },
-					{ $set: profileFields },
-					{ new: true }
-				);
-
-				return res.json(profile);
-			}
-
-			// Else create profile
-			profile = new Profile(profileFields);
-
-			await profile.save();
-			res.json(profile);
+			// Using upsert option (creates new doc if no match is found):
+			let profile = await Profile.findOneAndUpdate(
+				{ user: req.user.id },
+				{ $set: profileFields },
+				{ new: true, upsert: true, setDefaultsOnInsert: true }
+			);
+			return res.json(profile);
 		} catch (err) {
 			console.error(err.message);
-			res.status(500).send('Server Error');
+			return res.status(500).send('Server Error');
 		}
 	}
 );
@@ -154,7 +147,8 @@ router.post(
 // @access  Private
 router.delete('/', auth, async (req, res) => {
 	try {
-		// @todo - remove user posts
+		// Remove user posts
+		await Post.deleteMany({ user: req.user.id });
 		// Remove profile
 		await Profile.findOneAndRemove({ user: req.user.id });
 		// Remove user
@@ -221,19 +215,15 @@ router.delete('/experience/:exp_id', auth, async (req, res) => {
 	try {
 		const profile = await Profile.findOne({ user: req.user.id });
 
-		// Get exp to delete
-		const expToDelete = profile.experience
-			.map((item) => item._id)
-			.indexOf(req.params.exp_id);
-
-		profile.experience.splice(expToDelete, 1);
+		profile.experience = profile.experience.filter(
+			(exp) => exp._id.toString() !== req.params.exp_id
+		);
 
 		await profile.save();
-
-		res.json({ profile });
+		return res.status(200).json(profile);
 	} catch (err) {
 		console.error(err.message);
-		res.status(500).send('Server Error');
+		return res.status(500).json({ msg: 'Server error' });
 	}
 });
 
@@ -292,19 +282,15 @@ router.delete('/education/:edu_id', auth, async (req, res) => {
 	try {
 		const profile = await Profile.findOne({ user: req.user.id });
 
-		// Get edu to delete
-		const eduToDelete = profile.education
-			.map((item) => item._id)
-			.indexOf(req.params.edu_id);
-
-		profile.education.splice(eduToDelete, 1);
+		profile.education = profile.education.filter(
+			(edu) => edu._id.toString() !== req.params.edu_id
+		);
 
 		await profile.save();
-
-		res.json({ profile });
-	} catch (err) {
-		console.error(err.message);
-		res.status(500).send('Server Error');
+		return res.status(200).json(profile);
+	} catch (error) {
+		console.error(error);
+		return res.status(500).json({ msg: 'Server error' });
 	}
 });
 

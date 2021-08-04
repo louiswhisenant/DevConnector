@@ -149,11 +149,33 @@ img {
 }
 
 .alert {
+	position: fixed;
+	min-width: 75vw;
 	padding: 0.8rem;
-	margin: 1rem 0;
+	top: 5rem;
+	left: 50%;
+	transform: translateX(-50%);
 	opacity: 0.9;
 	background: var(--light-color);
 	color: #333;
+	text-align: center;
+}
+
+.alert-text {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+}
+
+.close-alert {
+	background-color: transparent;
+	padding: 0 0.5rem;
+	color: #fff;
+	font-size: 1.2rem;
+	float: right;
+	border: none;
+	cursor: pointer;
 }
 
 .btn-primary,
