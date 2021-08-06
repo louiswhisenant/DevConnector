@@ -4,6 +4,8 @@ import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Landing from './components/layout/Landing';
 import Login from './components/auth/Login';
+import Profiles from './components/profiles/Profiles';
+import Profile from './components/profile/Profile';
 import Register from './components/auth/Register';
 import Alert from './components/layout/Alert';
 import Dashboard from './components/dashboard/Dashboard';
@@ -45,6 +47,16 @@ const App = () => {
 								component={Register}
 							/>
 							<Route exact path='/login' component={Login} />
+							<Route
+								exact
+								path='/profiles'
+								component={Profiles}
+							/>
+							<Route
+								exact
+								path='/profile/:id'
+								component={Profile}
+							/>
 							<PrivateRoute
 								exact
 								path='/dashboard'

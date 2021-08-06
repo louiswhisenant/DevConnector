@@ -14,9 +14,7 @@ const Experience = ({ experience, deleteExperience }) => {
 				{exp.to === null ? (
 					'Present'
 				) : (
-					<td>
-						<Moment format='YYYY/MM/DD'>{exp.to}</Moment>
-					</td>
+					<Moment format='YYYY/MM/DD'>{exp.to}</Moment>
 				)}
 			</td>
 			<td>
