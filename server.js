@@ -1,14 +1,37 @@
 const express = require('express');
-const connectDB = require('./config/db');
+const mongoose = require('mongoose');
 const path = require('path');
+const { mainModule } = require('process');
+const config = require('./config');
+
+const { MONGO_URI } = config;
 
 const app = express();
 
-// Connect DB
-connectDB();
-
-// Init Middleware
+// Init middleware
 app.use(express.json({ extended: false }));
+
+// DB Config
+const db = MONGO_URI;
+
+// Connect to Mongo
+const connectDB = async () => {
+	try {
+		await mongoose.connect(db, {
+			useNewUrlParser: true,
+			useCreateIndex: true,
+			useUnifiedTopology: true,
+			useFindAndModify: false,
+		});
+
+		console.log('MongoDB connected...');
+	} catch (err) {
+		console.log(err.message);
+		process.exit(1);
+	}
+};
+
+connectDB();
 
 // Define routes
 app.use('/api/users', require('./routes/api/users'));
