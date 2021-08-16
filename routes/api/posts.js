@@ -26,6 +26,9 @@ router.post(
 				name: user.name,
 				avatar: user.avatar,
 				user: req.user.id,
+				interactions: {
+					likes: [{ user: req.user.id }],
+				},
 			});
 
 			const post = await newPost.save();
@@ -110,18 +113,40 @@ router.put('/likes/:id', auth, async (req, res) => {
 			return res.status(404).json({ msg: 'Post not found' });
 		}
 
+		// user has already liked post
 		if (
-			post.likes.filter((like) => like.user.toString() === req.user.id)
-				.length > 0
+			post.interactions.likes.filter(
+				(like) => like.user.toString() === req.user.id
+			).length > 0
 		) {
-			return res.status(400).json({ msg: 'Post already liked' });
-		}
+			// remove user like from likes array
+			const likeToRemove = post.interactions.likes
+				.map((like) => like.user.toString())
+				.indexOf(req.user.id);
 
-		post.likes.unshift({ user: req.user.id });
+			post.interactions.likes.splice(likeToRemove, 1);
+		} else {
+			// user has already unliked post
+			if (
+				post.interactions.unlikes.filter(
+					(unlike) => unlike.user.toString() === req.user.id
+				).length > 0
+			) {
+				// remover user unlike from unlikes array
+				const unlikeToRemove = post.interactions.unlikes
+					.map((unlike) => unlike.user.toString())
+					.indexOf(req.user.id);
+
+				post.interactions.unlikes.splice(unlikeToRemove, 1);
+			}
+
+			// add user like to post
+			post.interactions.likes.unshift({ user: req.user.id });
+		}
 
 		await post.save();
 
-		return res.json(post.likes);
+		return res.json(post.interactions);
 	} catch (err) {
 		console.error(err.message);
 		res.status(500).send('Server Error');
@@ -139,22 +164,40 @@ router.put('/unlikes/:id', auth, async (req, res) => {
 			return res.status(404).json({ msg: 'Post not found' });
 		}
 
+		// user has already unliked post
 		if (
-			post.likes.filter((like) => like.user.toString() === req.user.id)
-				.length === 0
+			post.interactions.unlikes.filter(
+				(unlike) => unlike.user.toString() === req.user.id
+			).length > 0
 		) {
-			return res.status(400).json({ msg: 'Post has not been liked' });
+			// remove user unlike from unlikes array
+			const unlikeToRemove = post.interactions.unlikes
+				.map((unlike) => unlike.user.toString())
+				.indexOf(req.user.id);
+
+			post.interactions.unlikes.splice(unlikeToRemove, 1);
+		} else {
+			// user has already liked post
+			if (
+				post.interactions.likes.filter(
+					(like) => like.user.toString() === req.user.id
+				).length > 0
+			) {
+				// remover user like from likes array
+				const likeToRemove = post.interactions.likes
+					.map((like) => like.user.toString())
+					.indexOf(req.user.id);
+
+				post.interactions.likes.splice(likeToRemove, 1);
+			}
+
+			// add user unlike to post
+			post.interactions.unlikes.unshift({ user: req.user.id });
 		}
-
-		const likeToRemove = post.likes
-			.map((like) => like.user.toString())
-			.indexOf(req.user.id);
-
-		post.likes.splice(likeToRemove, 1);
 
 		await post.save();
 
-		return res.json(post.likes);
+		return res.json(post.interactions);
 	} catch (err) {
 		console.error(err.message);
 		res.status(500).send('Server Error');
